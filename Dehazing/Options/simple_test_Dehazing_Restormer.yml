@@ -1,0 +1,91 @@
+# general settings
+name: simple_Dehazing_Restormer
+model_type: ImageCleanModel
+scale: 1
+num_gpu: 1  # set num_gpu: 0 for cpu mode
+manual_seed: 100
+
+# dataset and data loader settings
+datasets:
+  test:
+    name: TestDataset
+    type: Dataset_PairedImage #使用配对图像数据集（输入和目标）
+    dataroot_gt: ./Dehazing/Datasets/test/Haze_1k_thick/target
+    dataroot_lq: ./Dehazing/Datasets/test/Haze_1k_thick/input
+    geometric_augs: false
+
+    # data loader
+    # 是否打乱数据顺序
+    use_shuffle: false
+    log_image_info: true  # 记录图像信息
+    print_input_shape: true  # 打印输入形状
+    # 每个GPU使用的工作进程数
+    num_worker_per_gpu: 4
+    # 每个GPU的批次大小
+    batch_size_per_gpu: 1
+
+    filename_tmpl: '{}'
+    io_backend:
+      type: disk # 使用磁盘存储
+
+
+
+# network structures  网络结构配置
+#network_g:
+#  type: Restormer  #生成器网络类型
+#  inp_channels: 3
+#  out_channels: 3
+#  dim: 48   #特征维度
+#  num_blocks: [4,6,6,8]   # 每个阶段的Transformer块数量
+#  num_refinement_blocks: 4    # 细化阶段的块数量（什么是细化阶段）
+#  heads: [1,2,4,8]    # 每个阶段的注意力头数量
+#  ffn_expansion_factor: 2.66   # 前馈网络的扩展因子（做什么的）
+#  bias: False   # 是否使用偏置
+#  LayerNorm_type: WithBias   # 层归一化类型，带偏置项的层归一化
+#  dual_pixel_task: False   #是否为双像素任务
+
+#使用新的多路径的类
+#使用新的多路径的类
+network_g:
+  type: Restormer
+  inp_channels: 3
+  out_channels: 3
+  dim: 24
+  num_blocks: [2,2,2,2,2]
+  num_refinement_blocks: 4
+  heads: [2,4,6,1,1]
+  ffn_expansion_factor: 2
+  bias: False
+  LayerNorm_type: WithBias
+  dual_pixel_task: False
+
+
+# path  路径配置（不明白干什么的）
+path:
+  pretrain_network_g: /home/uav/DSY/A-Restormer/Restormer/Dehazing/pretrained_models/simple_Dehazing.pth    # 预训练生成器网络的路径，~表示不使用预训练权重
+  strict_load_g: true       # 是否严格加载生成器权重
+  param_key: 'params'  # 如果预训练模型是EMA版本，可能需要改为'params_ema'
+  log: 'logs/'  # 日志保存路径
+  visualization: 'results/'  # 可视化结果保存路径
+
+train:
+  mixing_augs:
+    mixup: false
+    mixup_beta: 1.2
+    use_identity: true
+
+
+val:
+  save_img: true  # 是否保存图像
+  metrics:  # 评估指标
+    psnr:
+      type: calculate_psnr
+      crop_border: 4
+      test_y_channel: true
+    ssim:
+      type: calculate_ssim
+      crop_border: 4
+      test_y_channel: true
+  use_image: true  # 使用图像计算指标（如果为false则使用张量）
+  rgb2bgr: true  # 是否将RGB转换为BGR，如果模型输出是RGB，但评估时需要BGR，则设为true
+
